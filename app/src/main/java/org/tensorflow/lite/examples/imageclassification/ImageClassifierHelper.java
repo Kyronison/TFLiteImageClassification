@@ -70,14 +70,15 @@ public class ImageClassifierHelper {
 
     public static ImageClassifierHelper create(
             Context context,
-            ClassifierListener listener
+            ClassifierListener listener,
+            int currentModel
     ) {
         return new ImageClassifierHelper(
                 0.5f,
                 2,
                 3,
                 0,
-                0,
+                currentModel,
                 context,
                 listener
         );

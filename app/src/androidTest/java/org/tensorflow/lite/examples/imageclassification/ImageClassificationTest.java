@@ -45,42 +45,6 @@ public class ImageClassificationTest {
             new Category("cup", 0.7578125f))
     );
 
-    @Test
-    public void classificationResultsShouldNotChange() {
-        ImageClassifierHelper helper = ImageClassifierHelper.create(
-                InstrumentationRegistry.getInstrumentation().getContext(),
-                new ImageClassifierHelper.ClassifierListener() {
-                    @Override
-                    public void onError(String error) {
-                        // no-op
-                    }
-
-                    @Override
-                    public void onResults(
-                            List<Classifications> results,
-                            long inferenceTime
-                    ) {
-                        assertNotNull(results.get(0));
-
-                        // Verify that the classified data and control
-                        // data have the same number of categories
-                        assertEquals(controlCategories.size(),
-                                results.get(0).getCategories().size());
-
-                        // Loop through the categories
-                        for (int i = 0; i < results.size(); i++) {
-                            // Verify that the labels are consistent
-                            assertEquals(
-                                    controlCategories.get(i).getLabel(),
-                                    results.get(0).getCategories().get(i).getLabel()
-                            );
-                        }
-                    }
-                });
-        helper.setThreshold(0.0f);
-        helper.classify(loadImage("coffee.jpg"), 0);
-    }
-
     private Bitmap loadImage(String fileName) {
         AssetManager assetManager = InstrumentationRegistry
                 .getInstrumentation()

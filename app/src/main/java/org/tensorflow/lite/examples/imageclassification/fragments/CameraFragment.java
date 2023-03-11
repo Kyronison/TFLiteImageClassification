@@ -22,7 +22,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -35,16 +34,20 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
-import androidx.recyclerview.widget.LinearLayoutManager;
+
 import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
 import org.tensorflow.lite.examples.imageclassification.ImageClassifierHelper;
+import org.tensorflow.lite.examples.imageclassification.ProductDeleteListener;
 import org.tensorflow.lite.examples.imageclassification.R;
+import org.tensorflow.lite.examples.imageclassification.VotingClassifier;
 import org.tensorflow.lite.examples.imageclassification.databinding.FragmentCameraBinding;
 import org.tensorflow.lite.task.vision.classifier.Classifications;
 
@@ -54,11 +57,16 @@ public class CameraFragment extends Fragment
     private static final String TAG = "Image Classifier";
 
     private FragmentCameraBinding fragmentCameraBinding;
-    private ImageClassifierHelper imageClassifierHelper;
-
     private ImageClassifierHelper imageClassifierHelper1;
     private ImageClassifierHelper imageClassifierHelper2;
     private ImageClassifierHelper imageClassifierHelper3;
+
+
+    private ProductDeleteListener productDeleteListener;
+
+    private int counter;
+    private VotingClassifier votingClassifier = new VotingClassifier(3);
+    public ArrayList<HashMap<String, Float>> arrayList1 = new ArrayList<>();
     private Bitmap bitmapBuffer;
     private ClassificationResultAdapter classificationResultsAdapter;
     private ImageAnalysis imageAnalyzer;
@@ -69,6 +77,7 @@ public class CameraFragment extends Fragment
      * Blocking camera operations are performed using this executor
      */
     private ExecutorService cameraExecutor;
+
 
     @Nullable
     @Override
@@ -99,7 +108,7 @@ public class CameraFragment extends Fragment
         // Shut down our background executor
         cameraExecutor.shutdown();
         synchronized (task) {
-            imageClassifierHelper.clearImageClassifier();
+        //    imageClassifierHelper.clearImageClassifier();
         }
     }
 
@@ -107,17 +116,27 @@ public class CameraFragment extends Fragment
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         cameraExecutor = Executors.newSingleThreadExecutor();
-        imageClassifierHelper = ImageClassifierHelper.create(requireContext()
-                , this);
+        arrayList1.add(new HashMap<String, Float>());
+        arrayList1.add(new HashMap<String, Float>());
+        arrayList1.add(new HashMap<String, Float>());
+
+
+        //productDeleteListener = productLabel -> {
+        //    // todo deleteMethod();
+        //    Log.d("UNIQUE DELeTE", productLabel);
+        //};
+
+        //imageClassifierHelper = ImageClassifierHelper.create(requireContext()
+        //        , this,);
 
         // setup result adapter
-        classificationResultsAdapter = new ClassificationResultAdapter();
-        classificationResultsAdapter
-                .updateAdapterSize(imageClassifierHelper.getMaxResults());
-        fragmentCameraBinding.recyclerviewResults
-                .setAdapter(classificationResultsAdapter);
-        fragmentCameraBinding.recyclerviewResults
-                .setLayoutManager(new LinearLayoutManager(requireContext()));
+        //classificationResultsAdapter = new ClassificationResultAdapter();
+        //classificationResultsAdapter
+        //        .updateAdapterSize(imageClassifierHelper.getMaxResults());
+        //fragmentCameraBinding.recyclerviewResults
+        //        .setAdapter(classificationResultsAdapter);
+        //fragmentCameraBinding.recyclerviewResults
+        //        .setLayoutManager(new LinearLayoutManager(requireContext()));
 
         // Set up the camera and its use cases
         fragmentCameraBinding.viewFinder.post(this::setUpCamera);
@@ -125,170 +144,85 @@ public class CameraFragment extends Fragment
         // Attach listeners to UI control widgets
         //initBottomSheetControls();
 
-        ImageClassifierHelper.ClassifierListener classifierListener = new ImageClassifierHelper.ClassifierListener() {
+        ImageClassifierHelper.ClassifierListener classifierListener1 = new ImageClassifierHelper.ClassifierListener() {
             @Override
             public void onError(String error) {
 
             }
             @Override
             public void onResults(List<Classifications> result, long inferenceTime) {
+                setter(counter);
                 //classificationResultsAdapter.updateResults(result.get(0).getCategories());
                 //fragmentCameraBinding.bottomSheetLayout.inferenceTimeVal
                 //.setText(String.format(Locale.US, "%d ms", inferenceTime));
                 if (result.get(0).getCategories().size()>0){
-                    Log.d("UNIQUE",result.get(0).getCategories().get(0).getLabel() + " ");
-                    Log.d("UNIQUE",result.get(0).getCategories().get(0).getScore() + " ");
+                    Log.d("UNIQUE1",result.get(0).getCategories().get(0).getLabel() + " ");
+                    HashMap<String, Float> pan = new HashMap<>();
+                   for (int i = 0; i<result.get(0).getCategories().size(); i++){
+                       pan.put(result.get(0).getCategories().get(i).getLabel(),result.get(0).getCategories().get(i).getScore() );
+                   }
+                    set(0,pan);//null(3)
                 }
+                checkReadyToVoteAndSummarize();
+            }
+        };
+        ImageClassifierHelper.ClassifierListener classifierListener2 = new ImageClassifierHelper.ClassifierListener() {
+            @Override
+            public void onError(String error) {
+
+            }
+            @Override
+            public void onResults(List<Classifications> result, long inferenceTime) {
+                setter(counter);
+                if (result.get(0).getCategories().size()>0){
+                    Log.d("UNIQUE2",result.get(0).getCategories().get(0).getLabel() + " ");
+                    HashMap<String, Float> pan = new HashMap<>();
+                    for (int i = 0; i<result.get(0).getCategories().size(); i++){
+                        pan.put(result.get(0).getCategories().get(i).getLabel(),result.get(0).getCategories().get(i).getScore() );
+                    }
+                    set(1,pan);//null(3)
+                }
+                checkReadyToVoteAndSummarize();
+            }
+        };
+        ImageClassifierHelper.ClassifierListener classifierListener3 = new ImageClassifierHelper.ClassifierListener() {
+            @Override
+            public void onError(String error) {
+
+            }
+            @Override
+            public void onResults(List<Classifications> result, long inferenceTime) {
+                setter(counter);
+                if (result.get(0).getCategories().size()>0){
+                    Log.d("UNIQUE3",result.get(0).getCategories().get(0).getLabel() + " ");
+                    HashMap<String, Float> pan = new HashMap<>();
+                    for (int i = 0; i<result.get(0).getCategories().size(); i++){
+                        pan.put(result.get(0).getCategories().get(i).getLabel(),result.get(0).getCategories().get(i).getScore() );
+                    }
+                    set(2,pan);//null(3)
+                }
+                checkReadyToVoteAndSummarize();
             }
         };
 
-        Log.d("UNIQUE","ImageClassifier was created");
-        imageClassifierHelper1 = ImageClassifierHelper.create(requireContext(), classifierListener);
-        imageClassifierHelper2 = ImageClassifierHelper.create(requireContext(), classifierListener);
-        imageClassifierHelper3 = ImageClassifierHelper.create(requireContext(), classifierListener);
-        imageClassifierHelper1.setCurrentModel(0);
-        imageClassifierHelper2.setCurrentModel(1);
-        imageClassifierHelper3.setCurrentModel(2);
-        imageClassifierHelper1.setThreshold(0.1f);
-        imageClassifierHelper2.setThreshold(0.1f);
-        imageClassifierHelper3.setThreshold(0.1f);
-    }
 
+        Log.d("UNIQUE","ImageClassifier was created");
+        imageClassifierHelper1 = ImageClassifierHelper.create(requireContext(), classifierListener1, 0);
+        imageClassifierHelper2 = ImageClassifierHelper.create(requireContext(), classifierListener2,1);
+        imageClassifierHelper3 = ImageClassifierHelper.create(requireContext(), classifierListener3,2);
+        //imageClassifierHelper1.setCurrentModel(0);
+        //imageClassifierHelper2.setCurrentModel(1);
+        //imageClassifierHelper3.setCurrentModel(2);
+        imageClassifierHelper1.setThreshold(0.05f);
+        imageClassifierHelper2.setThreshold(0.05f);
+        imageClassifierHelper3.setThreshold(0.05f);
+    }
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         imageAnalyzer.setTargetRotation(
                 fragmentCameraBinding.viewFinder.getDisplay().getRotation()
         );
-    }
-
-    private void initBottomSheetControls() {
-        // When clicked, lower classification score threshold floor
-        fragmentCameraBinding.bottomSheetLayout.thresholdMinus
-                .setOnClickListener(view -> {
-                    float threshold = imageClassifierHelper.getThreshold();
-                    if (threshold >= 0.1) {
-                        imageClassifierHelper.setThreshold(threshold - 0.1f);
-                        updateControlsUi();
-                    }
-                });
-
-        // When clicked, raise classification score threshold floor
-        fragmentCameraBinding.bottomSheetLayout.thresholdPlus
-                .setOnClickListener(view -> {
-                    float threshold = imageClassifierHelper.getThreshold();
-                    if (threshold < 0.9) {
-                        imageClassifierHelper.setThreshold(threshold + 0.1f);
-                        updateControlsUi();
-                    }
-                });
-
-        // When clicked, reduce the number of objects that can be classified
-        // at a time
-        fragmentCameraBinding.bottomSheetLayout.maxResultsMinus
-                .setOnClickListener(view -> {
-                    int maxResults = imageClassifierHelper.getMaxResults();
-                    if (maxResults > 1) {
-                        imageClassifierHelper.setMaxResults(maxResults - 1);
-                        updateControlsUi();
-                        classificationResultsAdapter.updateAdapterSize(
-                                imageClassifierHelper.getMaxResults()
-                        );
-                    }
-                });
-
-        // When clicked, increase the number of objects that can be
-        // classified at a time
-        fragmentCameraBinding.bottomSheetLayout.maxResultsPlus
-                .setOnClickListener(view -> {
-                    int maxResults = imageClassifierHelper.getMaxResults();
-                    if (maxResults < 3) {
-                        imageClassifierHelper.setMaxResults(maxResults + 1);
-                        updateControlsUi();
-                        classificationResultsAdapter.updateAdapterSize(
-                                imageClassifierHelper.getMaxResults()
-                        );
-                    }
-                });
-
-        // When clicked, decrease the number of threads used for classification
-        fragmentCameraBinding.bottomSheetLayout.threadsMinus
-                .setOnClickListener(view -> {
-                    int numThreads = imageClassifierHelper.getNumThreads();
-                    if (numThreads > 1) {
-                        imageClassifierHelper.setNumThreads(numThreads - 1);
-                        updateControlsUi();
-                    }
-                });
-
-        // When clicked, increase the number of threads used for classification
-        fragmentCameraBinding.bottomSheetLayout.threadsPlus
-                .setOnClickListener(view -> {
-                    int numThreads = imageClassifierHelper.getNumThreads();
-                    if (numThreads < 4) {
-                        imageClassifierHelper.setNumThreads(numThreads + 1);
-                        updateControlsUi();
-                    }
-                });
-
-        // When clicked, change the underlying hardware used for inference.
-        // Current options are CPU,GPU, and NNAPI
-        fragmentCameraBinding.bottomSheetLayout.spinnerDelegate
-                .setSelection(0, false);
-        fragmentCameraBinding.bottomSheetLayout.spinnerDelegate
-                .setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                    @Override
-                    public void onItemSelected(AdapterView<?> adapterView,
-                                               View view,
-                                               int position,
-                                               long id) {
-                        imageClassifierHelper.setCurrentDelegate(position);
-                        updateControlsUi();
-                    }
-
-                    @Override
-                    public void onNothingSelected(AdapterView<?> adapterView) {
-                        // no-op
-                    }
-                });
-
-        // When clicked, change the underlying model used for object
-        // classification
-        fragmentCameraBinding.bottomSheetLayout.spinnerModel
-                .setSelection(0, false);
-        fragmentCameraBinding.bottomSheetLayout.spinnerModel
-                .setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                    @Override
-                    public void onItemSelected(AdapterView<?> adapterView,
-                                               View view,
-                                               int position,
-                                               long id) {
-                        imageClassifierHelper.setCurrentModel(position);
-                        updateControlsUi();
-                    }
-
-                    @Override
-                    public void onNothingSelected(AdapterView<?> adapterView) {
-                        // no-op
-                    }
-                });
-    }
-
-    // Update the values displayed in the bottom sheet. Reset classifier.
-    private void updateControlsUi() {
-        fragmentCameraBinding.bottomSheetLayout.maxResultsValue
-                .setText(String.valueOf(imageClassifierHelper.getMaxResults()));
-        fragmentCameraBinding.bottomSheetLayout.thresholdValue
-                .setText(String.format(Locale.US, "%.2f",
-                        imageClassifierHelper.getThreshold()));
-        fragmentCameraBinding.bottomSheetLayout.threadsValue
-                .setText(String.valueOf(imageClassifierHelper.getNumThreads()));
-        // Needs to be cleared instead of reinitialized because the GPU
-        // delegate needs to be initialized on the thread using it when
-        // applicable
-        synchronized (task) {
-            imageClassifierHelper.clearImageClassifier();
-        }
     }
 
     // Initialize CameraX, and prepare to bind the camera use cases
@@ -373,11 +307,12 @@ public class CameraFragment extends Fragment
         int imageRotation = image.getImageInfo().getRotationDegrees();
         image.close();
         synchronized (task) {
-            // Pass Bitmap and rotation to the image classifier helper for
-            // processing and classification
-            //imageClassifierHelper.classify(bitmapBuffer, imageRotation);
             imageClassifierHelper1.classify(bitmapBuffer, imageRotation);
+        }
+        synchronized (task) {
             imageClassifierHelper2.classify(bitmapBuffer, imageRotation);
+        }
+        synchronized (task) {
             imageClassifierHelper3.classify(bitmapBuffer, imageRotation);
         }
     }
@@ -397,5 +332,17 @@ public class CameraFragment extends Fragment
             fragmentCameraBinding.bottomSheetLayout.inferenceTimeVal
                     .setText(String.format(Locale.US, "%d ms", inferenceTime));
         });
+    }
+    public void set(int index, HashMap<String, Float> array){
+        arrayList1.set(index,array);
+    }
+    public void setter(int counter){
+        this.counter++;
+    }
+    public void checkReadyToVoteAndSummarize(){
+        if (this.counter==3){
+            this.counter = 0;
+            votingClassifier.summarizeFloats(arrayList1);
+        }
     }
 }

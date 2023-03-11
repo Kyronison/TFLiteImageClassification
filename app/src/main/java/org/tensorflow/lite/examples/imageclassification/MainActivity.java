@@ -33,20 +33,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         ActivityMainBinding activityMainBinding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(activityMainBinding.getRoot());
-        sampleVoting();
-    }
-    public void sampleVoting() {
-        VotingClassifier votingClassifier = new VotingClassifier(3);
-        ArrayList<ArrayList<Double>> numbers = new ArrayList<>();
-        ArrayList<Double> prob1 = new ArrayList<>();
-        for (int i=0;i<9;i++){
-            prob1.add(0e-9);
-        }
-        prob1.add(1.0);
-        numbers.add(prob1);
-        numbers.add(prob1);
-        numbers.add(prob1);
-        System.out.println(Arrays.toString(votingClassifier.summarize(numbers)));
     }
     @Override
     public void onBackPressed() {
